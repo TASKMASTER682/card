@@ -5,6 +5,7 @@ const cors = require("cors");
 const rateLimit = require("express-rate-limit");
 
 const { connectToDatabase } = require("./db");
+const { startKeepAlive } = require("./keepalive");
 const tweetRoutes = require("./routes/tweet");
 const analyticsRoutes = require("./routes/analytics");
 const proxyRoutes = require("./routes/proxy");
@@ -56,6 +57,7 @@ async function start() {
   await connectToDatabase();
   app.listen(PORT, () => {
     console.log(`[server] Cardly API listening on port ${PORT}`);
+    startKeepAlive();
   });
 }
 
