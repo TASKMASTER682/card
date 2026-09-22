@@ -1,0 +1,19 @@
+{
+  "name": "cardly-backend",
+  "version": "1.0.0",
+  "description": "Express + MongoDB API for the Cardly tweet-to-image generator.",
+  "main": "server/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "dependencies": {
+    "cors": "2.8.5",
+    "dotenv": "16.4.5",
+    "express": "^4.22.3",
+    "express-rate-limit": "7.4.0",
+    "mongoose": "^8.24.4",
+    "node-fetch": "2.7.0"
+  }
+}
