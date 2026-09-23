@@ -56,7 +56,7 @@ app.use((_req, res) => {
 async function start() {
   await connectToDatabase();
   app.listen(PORT, () => {
-    console.log(`[server] Cardly API listening on port ${PORT}`);
+    console.log(`[server] Frame Posting API listening on port ${PORT}`);
     startKeepAlive();
   });
 }

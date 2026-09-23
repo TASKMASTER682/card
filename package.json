@@ -1,7 +1,7 @@
 {
-  "name": "cardly-backend",
+  "name": "frame-posting-backend",
   "version": "1.0.0",
-  "description": "Express + MongoDB API for the Cardly tweet-to-image generator.",
+  "description": "Express + MongoDB API for the Frame Posting tweet-to-image generator.",
   "main": "server/index.js",
   "type": "commonjs",
   "scripts": {

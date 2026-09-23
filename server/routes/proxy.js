@@ -19,7 +19,7 @@ router.get("/proxy-image", async (req, res) => {
     }
 
     const response = await fetch(url, {
-      headers: { "User-Agent": "Cardly/1.0" },
+      headers: { "User-Agent": "FramePosting/1.0" },
       redirect: "follow",
       timeout: 10000,
     });
