@@ -13,6 +13,8 @@ const proxyRoutes = require("./routes/proxy");
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+app.set("trust proxy", 1);
+
 const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:3000")
   .split(",")
   .map((origin) => origin.trim());
