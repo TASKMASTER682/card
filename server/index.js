@@ -7,6 +7,7 @@ const rateLimit = require("express-rate-limit");
 const { connectToDatabase } = require("./db");
 const { startKeepAlive } = require("./keepalive");
 const tweetRoutes = require("./routes/tweet");
+const linkedinRoutes = require("./routes/linkedin");
 const analyticsRoutes = require("./routes/analytics");
 const proxyRoutes = require("./routes/proxy");
 
@@ -42,6 +43,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.use("/api", tweetRoutes);
+app.use("/api", linkedinRoutes);
 app.use("/api", analyticsRoutes);
 app.use("/api", proxyRoutes);
 

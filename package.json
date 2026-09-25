@@ -9,11 +9,11 @@
     "dev": "node --watch server/index.js"
   },
   "dependencies": {
-    "cors": "2.8.5",
-    "dotenv": "16.4.5",
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.3",
     "express": "^4.22.3",
-    "express-rate-limit": "7.4.0",
+    "express-rate-limit": "^8.0.0",
     "mongoose": "^8.24.4",
-    "node-fetch": "2.7.0"
+    "node-fetch": "^2.7.0"
   }
 }

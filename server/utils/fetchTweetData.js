@@ -15,11 +15,21 @@ class TweetFetchError extends Error {
  * decoding the handful of entities Twitter's embed HTML actually uses.
  */
 function extractPlainText(html) {
-  const withoutBlockquote = html
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<a [^>]*>[^<]*<\/a>\s*$/i, ""); // trailing "— Name (@handle) date" link
+  const withoutScript = html.replace(/<script[\s\S]*?<\/script>/gi, "");
 
-  const withoutTags = withoutBlockquote
+  // Twitter's embed ends with an attribution footer:
+  // "&mdash; Name (@handle) <a ...>date</a>". Cut everything from the
+  // LAST em-dash (the tweet body may legitimately contain earlier ones).
+  const footerStart = Math.max(
+    withoutScript.lastIndexOf("&mdash;"),
+    withoutScript.lastIndexOf("—")
+  );
+  const withoutFooter =
+    footerStart === -1
+      ? withoutScript
+      : withoutScript.slice(0, footerStart).trim();
+
+  const withoutTags = withoutFooter
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/p>/gi, "\n")
     .replace(/<[^>]+>/g, "");
@@ -30,21 +40,69 @@ function extractPlainText(html) {
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    .replace(/&mdash;/g, "—")
     .trim();
+}
+
+/**
+ * Fetches real engagement stats (likes / retweets / replies), the true post
+ * date, display name and profile picture from the free key-less vxtwitter
+ * public API. Returns null on any failure so the caller can keep its
+ * existing fallbacks (zero metrics, unavatar, now date).
+ */
+async function fetchMetricsFromVxTwitter(handle, tweetId) {
+  const endpoint = `https://api.vxtwitter.com/${handle}/status/${tweetId}`;
+  const res = await fetch(endpoint, {
+    headers: { "User-Agent": "social-card-generator/1.0 (node-fetch)" },
+  });
+  if (!res.ok) return null;
+
+  const data = await res.json().catch(() => null);
+  if (!data || typeof data !== "object") return null;
+
+  // vxtwitter returns the tweet payload at the top level; fxtwitter-style
+  // responses nest it under `tweet`. Support both these days of mirrors.
+  const tweet = data.tweet || data;
+
+  const rawDate =
+    typeof tweet.date_epoch === "number"
+      ? new Date(tweet.date_epoch * 1000)
+      : tweet.date
+        ? new Date(tweet.date)
+        : null;
+  const createdAt =
+    rawDate && !Number.isNaN(rawDate.getTime())
+      ? rawDate.toISOString()
+      : null;
+
+  return {
+    authorName:
+      tweet.user_name ||
+      tweet.author_name ||
+      tweet.author?.name ||
+      null,
+    avatarUrl:
+      tweet.user_profile_image_url ||
+      tweet.author_avatar ||
+      tweet.author?.avatar_url ||
+      null,
+    createdAt,
+    metrics: {
+      likes: typeof tweet.likes === "number" ? tweet.likes : 0,
+      reposts: typeof tweet.retweets === "number" ? tweet.retweets : 0,
+      replies: typeof tweet.replies === "number" ? tweet.replies : 0,
+    },
+  };
 }
 
 /**
  * Resolves a public tweet URL into card-ready data using free, key-less
  * public endpoints:
  *  - publish.twitter.com/oembed for author name + tweet HTML (official,
- *    no auth required, rate-limited but generous for a small app)
- *  - unavatar.io for a best-effort profile picture by handle
- *
- * NOTE: Twitter/X no longer exposes public like/repost counts without an
- * authenticated v2 API bearer token. If you have one, swap this function
- * to call api.twitter.com/2/tweets and merge real `public_metrics` in.
- * Until then, metrics are returned as zero and are safely toggle-able off
- * in the UI via `showMetrics`.
+ *    no auth required)
+ *  - api.vxtwitter.com for real likes/reposts/replies, the real timestamp
+ *    and the actual profile picture (merely enriches; never fatal)
+ *  - unavatar.io as a last-resort avatar fallback by handle
  */
 async function fetchTweetData(tweetUrl) {
   const match = tweetUrl.match(TWEET_URL_PATTERN);
@@ -53,7 +111,7 @@ async function fetchTweetData(tweetUrl) {
       "That doesn't look like a valid twitter.com or x.com post URL."
     );
   }
-  const [, handleFromUrl] = match;
+  const [, handleFromUrl, tweetId] = match;
 
   const oembedEndpoint = `https://publish.twitter.com/oembed?url=${encodeURIComponent(
     tweetUrl
@@ -72,13 +130,18 @@ async function fetchTweetData(tweetUrl) {
   const authorHandle = `@${handleFromUrl}`;
   const body = extractPlainText(data.html || "");
 
+  const vx = await fetchMetricsFromVxTwitter(handleFromUrl, tweetId).catch(
+    () => null
+  );
+
   return {
-    authorName,
+    authorName: vx?.authorName || authorName,
     authorHandle,
-    avatarUrl: `https://unavatar.io/twitter/${handleFromUrl}`,
+    avatarUrl: vx?.avatarUrl || `https://unavatar.io/twitter/${handleFromUrl}`,
     body: body || "This post has no readable text.",
-    createdAt: new Date().toISOString(),
-    metrics: { likes: 0, reposts: 0, replies: 0 },
+    createdAt: vx?.createdAt || new Date().toISOString(),
+    metrics:
+      vx?.metrics || { likes: 0, reposts: 0, replies: 0 },
     sourceUrl: tweetUrl,
   };
 }
